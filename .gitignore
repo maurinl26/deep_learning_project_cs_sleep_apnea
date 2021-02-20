@@ -1,5 +1,9 @@
 /data
 /publications
+/.vscode
+/__pycache__
 
 visualisation.py
 metric_dreem.py
+
+
