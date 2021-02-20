@@ -1,5 +1,4 @@
-from scipy.signal import butter, freqs, sosfilt
-import h5py
+from scipy.signal import butter, sosfilt
 import numpy as np
 import pandas as pd
 
@@ -28,13 +27,13 @@ if __name__ == "__main__":
         "Snoring",
         "SPO2",
         "C4A1",
-        "O2A1",
+        "O2A1"
     ]
 
     # Load data
-    X_TRAIN_PATH = "./data/X_train.h5"
-    train_file = h5py.File(X_TRAIN_PATH)
-    X_train = train_file['data'][:, 2:]
+    X_TRAIN_PATH = "./data/X_train.npy"
+    train_file = np.load(X_TRAIN_PATH)
+    X_train = train_file[:, 2:]
 
     # Load masks
     PATH_TO_TRAINING_TARGET = './data/y_train_tX9Br0C.csv'

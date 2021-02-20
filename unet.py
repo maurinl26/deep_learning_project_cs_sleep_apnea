@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 class UNet(nn.Module):
 
     def __init__(self, channels, features):
@@ -122,7 +123,20 @@ class UNet(nn.Module):
 
             nn.Conv1d(16, 16, 5, padding=2),
             nn.BatchNorm1d(16),
-            nn.ReLU(inplace=True),
+            nn.Tanh(),
+
+            nn.ConstantPad1d(660,0)
+        )
+
+        self.segment1 = nn.Sequential(
+            nn.Conv1d(16, 5, 1),
+            nn.BatchNorm1d(5),
+            nn.ReLU(inplace=True)
+        )
+
+        self.segment2 = nn.Sequential(
+            nn.Conv1d(5, 5, 1),
+            nn.Softmax(dim=1)
         )
 
         self.fully_conn1 = nn.Sequential(
@@ -132,7 +146,7 @@ class UNet(nn.Module):
 
         self.fully_conn2 = nn.Sequential(
             nn.Linear(900, 90),
-            nn.Softmax()
+            nn.Sigmoid()
         )
 
 
@@ -156,9 +170,14 @@ class UNet(nn.Module):
         x = self.decoder_4(x)
         x = torch.cat((x, enc1), 1)
 
-        print(x.shape)
-        # Ajouter classifier avec
-        x = self.fully_conn1(x)
-        x = self.fully_conn2(x)
+        x = self.decoder_5(x)
+
+        x = self.segment1(x)
+
+        #x = x.view(-1, 5, 3000, 35)
+        x = torch.mean(x, dim=2)
+        print(f" x, shape : {x.shape}")
+
+        x = self.segment2(x)
 
         return x
