@@ -3,7 +3,11 @@
 /.vscode
 /__pycache__
 
+.idea
+cvpr2017AuthorKit
+
 visualisation.py
 metric_dreem.py
-
+h5tonumpy.py
+h5_loader.py
 
