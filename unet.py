@@ -123,30 +123,19 @@ class UNet(nn.Module):
 
             nn.Conv1d(16, 16, 5, padding=2),
             nn.BatchNorm1d(16),
-            nn.Tanh(),
-
-            nn.ConstantPad1d(660,0)
+            nn.ReLU(inplace=True),
         )
 
         self.segment1 = nn.Sequential(
             nn.Conv1d(16, 5, 1),
             nn.BatchNorm1d(5),
-            nn.ReLU(inplace=True)
+            nn.ReLU(inplace=True),
+
         )
 
         self.segment2 = nn.Sequential(
-            nn.Conv1d(5, 5, 1),
+            nn.Conv1d(5, 1, 1),
             nn.Softmax(dim=1)
-        )
-
-        self.fully_conn1 = nn.Sequential(
-            nn.Linear(9000, 900),
-            nn.ReLU(inplace=True)
-        )
-
-        self.fully_conn2 = nn.Sequential(
-            nn.Linear(900, 90),
-            nn.Sigmoid()
         )
 
 
@@ -171,12 +160,10 @@ class UNet(nn.Module):
         x = torch.cat((x, enc1), 1)
 
         x = self.decoder_5(x)
-
         x = self.segment1(x)
 
-        #x = x.view(-1, 5, 3000, 35)
+        x = x.view(-1, 5, 100, 90)
         x = torch.mean(x, dim=2)
-        print(f" x, shape : {x.shape}")
 
         x = self.segment2(x)
 
