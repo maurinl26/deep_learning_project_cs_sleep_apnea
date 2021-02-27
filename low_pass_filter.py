@@ -1,6 +1,7 @@
 from scipy.signal import butter, sosfilt
 import numpy as np
 import pandas as pd
+import h5py
 
 from visualisation import visualize_signal_and_event
 
@@ -19,41 +20,15 @@ def low_pass_filter(sig, freq=10):
 
 
 if __name__ == "__main__":
-    SIGNALS_NAME = [
-        "AbdoBelt",
-        "AirFlow",
-        "PPG",
-        "ThorBelt",
-        "Snoring",
-        "SPO2",
-        "C4A1",
-        "O2A1"
-    ]
+    X_TRAIN_PATH = "./data/X_train.h5"
 
-    # Load data
-    X_TRAIN_PATH = "./data/X_train.npy"
-    train_file = np.load(X_TRAIN_PATH)
-    X_train = train_file[:, 2:]
+    data = h5py.File(X_TRAIN_PATH)
+    time_series = np.array(data.get('data'))
 
-    # Load masks
-    PATH_TO_TRAINING_TARGET = './data/y_train_tX9Br0C.csv'
-    mask = np.array(pd.read_csv(PATH_TO_TRAINING_TARGET))
+    time_series = MinMaxScaler().fit_transform(time_series)
+    print(time_series.shape)
 
-    print(X_train.shape)
-
-    X = X_train.reshape(4400, 8, 9000)
-
-    # Plot of raw signals
-    x = X[1, :, :]
-    visualize_signal_and_event(x, mask[1, :], signals_name=SIGNALS_NAME, signal_freq=100)
-
-    # Test of low pass filtering
-    X_filtered = low_pass_filter(X_train, 10)
-    X_filtered = X_filtered.reshape(4400, 8, 9000)
-
-    # Plot of filtered signals
-    x = X_filtered[1, :, :]
-    visualize_signal_and_event(x, mask[1, :], signals_name=SIGNALS_NAME, signal_freq=100)
+    #np.save('X_train_scaled.npy', time_series)
 
 
 

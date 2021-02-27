@@ -2,13 +2,14 @@ import numpy as np
 import pandas as pd
 import datetime as dt
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import MinMaxScaler
 
 import torch
 from torch.autograd import Variable
 import torch.utils.data as data
 
 from unet import UNet
-from loss import IoULoss
+from loss import IoULoss, DiceLoss
 from low_pass_filter import low_pass_filter
 
 # DataLoader
@@ -33,7 +34,7 @@ if __name__ == "__main__":
     # Loading data
     X_TRAIN_LABELS_PATH = "./data/X_train_h7ipJUo.csv"
     Y_TRAIN_PATH = "./data/y_train_tX9Br0C.csv"
-    X_TRAIN_PATH = "./data/X_train.npy"
+    X_TRAIN_PATH = "./data/X_train_scaled.npy"
 
     X_labels = pd.read_csv(X_TRAIN_LABELS_PATH).to_numpy()
     X = torch.from_numpy(np.load(X_TRAIN_PATH)).float()
@@ -46,12 +47,15 @@ if __name__ == "__main__":
     # Reshape to a dataset with 8 channels in 3rd dimension
     X_train = X_train.reshape(4400, 8, 9000)
 
+    # Select Signals
+    X_train = X_train[:, 1:4, :]
+    print(f" Taille du dataset {X_train.shape}")
+
     # Train test split (could be improved in k fold validation)
     X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, train_size=0.8, random_state=42)
 
     # train_set = SleepApneaDataset(X_TRAIN_PATH, Y_TRAIN_PATH)
-
-    BATCH_SIZE = 64
+    BATCH_SIZE = 128
 
     train_loader = torch.utils.data.DataLoader(
         dataset=Dataset(y_train, X_train),
@@ -67,12 +71,16 @@ if __name__ == "__main__":
         num_workers=4
     )
 
+    CHANNELS = 3
+    N_FEATURES = 9000
+
     # Def of network
-    model = UNet(8, 9000)
+    model = UNet(CHANNELS, N_FEATURES)
     model.to(device)
 
     # Optimizer : Adam
-    optimizer = torch.optim.Adam(model.parameters(), lr=5*10**(-6))
+    #optimizer = torch.optim.SGD(model.parameters(), lr=1e-6, momentum=0.9, weight_decay=5e-4)
+    optimizer = torch.optim.Adam(model.parameters(), lr=5e-6)
 
     # Loss function Cross Entropy (behind sigmoid layers)
     loss_fn = torch.nn.CrossEntropyLoss()
@@ -92,11 +100,9 @@ if __name__ == "__main__":
             optimizer.step()
 
             # Print performances every 50 batches
-            if batch_idx % 50 == 0:
-                print(f" Batch {batch_idx}, Loss : {round(loss,3)}")
+            if batch_idx % 64 == 0:
+                print(f" Epoch : {epoch}, Batch {batch_idx}, Loss : {loss}")
 
-        now_str = dt.datetime.now().strftime('%m-%d%-Y')
-        torch.save(model.state_dict(), './model/'+now_str+'_unet')
 
         """
         # testing
