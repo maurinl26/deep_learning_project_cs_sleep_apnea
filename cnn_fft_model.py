@@ -182,13 +182,17 @@ class CNNet(nn.Module):
         x_combined = self.conv5(x_combined) # no activation function for use with BCEWithLogitsLoss
         return x_combined.squeeze()
 
-print('Starting training')
+load_model=True
+MODEL_PATH = './model/02-27-2021_20-12_cnn'
 model = CNNet()
+if load_model:
+    model = torch.load(MODEL_PATH)
 model.to(device)
 
-optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
+optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 loss_fn = nn.BCEWithLogitsLoss()
 
+print('Starting training')
 NUM_EPOCHS = 100
 for epoch in range(NUM_EPOCHS):
     total_loss = 0
@@ -221,7 +225,7 @@ for epoch in range(NUM_EPOCHS):
                 val_loss += loss.item()
 
         final_score = 100. * score / len(val_loader.dataset)
-        print('Validation loss: {}/{})\n'.format(val_loss/len(val_loader.dataset), len(val_loader.dataset)))
+        print('Validation loss: {})\n'.format(val_loss/len(val_loader)))
 
 
 now_str = dt.datetime.now().strftime('%m-%d-%Y_%H-%M')
