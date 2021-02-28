@@ -1,16 +1,19 @@
+import datetime as dt
+
+import h5py
 import numpy as np
 import pandas as pd
-import datetime as dt
+import torch
+import torch.nn as nn
+import torch.utils.data as data
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
-
-import torch
 from torch.autograd import Variable
-import torch.utils.data as data
 
-from unet import UNet
-from loss import IoULoss, DiceLoss
+from loss import DiceLoss, IoULoss
 from low_pass_filter import low_pass_filter
+from unet import UNet
+
 
 # DataLoader
 class Dataset(torch.utils.data.Dataset):
@@ -28,28 +31,30 @@ class Dataset(torch.utils.data.Dataset):
 
 if __name__ == "__main__":
 
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    print(device)
+    # Device configuration
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Device : {device}")
 
     # Loading data
+    print("Loading data ...")
     X_TRAIN_LABELS_PATH = "./data/X_train_h7ipJUo.csv"
     Y_TRAIN_PATH = "./data/y_train_tX9Br0C.csv"
-    X_TRAIN_PATH = "./data/X_train_scaled.npy"
+    X_TRAIN_PATH = "./data/X_train.h5"
 
     X_labels = pd.read_csv(X_TRAIN_LABELS_PATH).to_numpy()
-    X = torch.from_numpy(np.load(X_TRAIN_PATH)).float()
-    y = torch.from_numpy(pd.read_csv(Y_TRAIN_PATH).to_numpy()).long()
+    train_file = h5py.File(X_TRAIN_PATH, "r")
+    X = torch.from_numpy(np.array(train_file["data"])).float()
+    y = torch.from_numpy(pd.read_csv(Y_TRAIN_PATH).to_numpy()).float()
 
     # First to columns are removed
-    X_train = X[:, 2:]
+    X = X[:, 2:]
     y_train = y[:, 1:]
 
-    # Reshape to a dataset with 8 channels in 3rd dimension
-    X_train = X_train.reshape(4400, 8, 9000)
+    print(f" Proportion de sleep apnea : {y_train.sum()}, {y_train.shape}")
 
-    # Select Signals
-    X_train = X_train[:, 1:4, :]
-    print(f" Taille du dataset {X_train.shape}")
+    # Reshape to a dataset with 8 channels in 2nd dimension
+    X_train = X.view(4400, 8, 9000)
+
 
     # Train test split (could be improved in k fold validation)
     X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, train_size=0.8, random_state=42)
@@ -71,20 +76,19 @@ if __name__ == "__main__":
         num_workers=4
     )
 
-    CHANNELS = 3
+    CHANNELS = 8
     N_FEATURES = 9000
 
     # Def of network
-    model = UNet(CHANNELS, N_FEATURES)
+    model = UNet(CHANNELS)
     model.to(device)
 
     # Optimizer : Adam
-    #optimizer = torch.optim.SGD(model.parameters(), lr=1e-6, momentum=0.9, weight_decay=5e-4)
     optimizer = torch.optim.Adam(model.parameters(), lr=5e-6)
 
-    # Loss function Cross Entropy (behind sigmoid layers)
-    loss_fn = torch.nn.CrossEntropyLoss()
-    loss_fn = IoULoss()
+    # Loss function
+    #loss_fn = IoULoss()
+    loss_fn = nn.BCEWithLogitsLoss()
 
     N_EPOCHS = 10
 
@@ -95,6 +99,7 @@ if __name__ == "__main__":
             optimizer.zero_grad()
             x, target = Variable(x).to(device), Variable(target).to(device)
             out = model(x)
+            out = torch.squeeze(out)
             loss = loss_fn.forward(out, target)
             loss.backward()
             optimizer.step()
