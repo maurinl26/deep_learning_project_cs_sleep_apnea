@@ -149,6 +149,6 @@ class UNet(nn.Module):
 
 
 if __name__ == "__main__":
-    model = UNet(features=9000, channels=8)
+    model = UNet(channels=8)
     n_params = sum(p.numel() for p in model.parameters())
     print(f" Nombre de parameters : {n_params}")
